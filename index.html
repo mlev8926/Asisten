@@ -1,0 +1,1245 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Obat 10 Hari - Siklus Medis 24 Jam</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bs-body-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --verified-blue: #1D9BF0; /* Twitter/Instagram Official Verified Blue */
+        }
+        body {
+            background-color: #f0f2f5;
+        }
+        .text-xs {
+            font-size: 0.75rem;
+        }
+        .text-sm {
+            font-size: 0.85rem;
+        }
+        .fs-7 {
+            font-size: 0.8rem;
+        }
+        
+        /* Status Card Styling */
+        .status-belum {
+            background-color: #ffffff;
+            color: #495057;
+            border-left: 5px solid #6c757d;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .status-aktif {
+            background-color: #fffbeb;
+            color: #92400e;
+            border-left: 5px solid #d97706;
+            animation: pulse-border 2s infinite;
+        }
+        .status-diminum {
+            background-color: #f0fdf4;
+            color: #166534;
+            border-left: 5px solid #15803d;
+        }
+        .status-terlewat {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border-left: 5px solid #b91c1c;
+            opacity: 0.85;
+        }
+        
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(217, 119, 6, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+        }
+
+        .med-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid #e5e7eb;
+        }
+        .med-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .sticky-tracker {
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .table-responsive-custom {
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+
+        .cursor-not-allowed {
+            cursor: not-allowed !important;
+        }
+
+        /* Verified Blue Check Badge Style - Static (No Animation) */
+        .verified-badge-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(29, 155, 240, 0.08);
+            border: 1px solid rgba(29, 155, 240, 0.2);
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-weight: 700;
+            color: var(--verified-blue);
+            font-size: 0.75rem;
+        }
+
+        .verified-blue-tick {
+            color: var(--verified-blue);
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sticky-tracker py-3 px-3 shadow-sm">
+    <div class="container-fluid">
+        <div class="row align-items-center g-3">
+            <div class="col-12 col-md-4">
+                <span class="d-block text-xs text-muted text-uppercase fw-bold tracking-wider">Waktu Real-Time (WIB / Jakarta)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <h3 class="mb-0 fw-bold text-dark" id="live-clock">--:--:-- WIB</h3>
+                </div>
+                <small class="text-secondary d-block fw-medium mt-1" id="live-date">-- --- ----</small>
+            </div>
+            
+            <div class="col-12 col-md-4">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label text-xs mb-1 fw-bold text-secondary">Tanggal Mulai Hari 1 (Jam 06.35)</label>
+                        <input type="date" id="start-date-picker" class="form-control form-control-sm border-secondary-subtle">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-xs mb-1 fw-bold text-secondary">Siklus Aktif Saat Ini</label>
+                        <div class="h5 mb-0 fw-bold text-primary" id="active-day-status">Menghitung...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4 d-flex gap-2 justify-content-md-end align-items-center">
+                <button class="btn btn-sm btn-outline-primary text-xs py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#infoModal">
+                    <i class="bi bi-info-circle-fill"></i> Panduan &amp; Aturan
+                </button>
+                <button class="btn btn-sm btn-dark text-xs py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#manageMedicinesModal" onclick="openCRUDModal()">
+                    <i class="bi bi-capsule-pill text-warning"></i> Kelola Obat (CRUD)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-pie-chart-fill"></i> Total Kepatuhan Minum Obat (10 Hari)</h6>
+                    <div class="row text-center g-2">
+                        <div class="col-3">
+                            <div class="p-2 border rounded bg-white">
+                                <span class="d-block text-xs text-muted">Belum</span>
+                                <strong class="h4 text-secondary" id="stat-belum">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded bg-warning-subtle text-warning-emphasis">
+                                <span class="d-block text-xs">Aktif</span>
+                                <strong class="h4 text-warning-emphasis" id="stat-aktif">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded bg-success-subtle text-success-emphasis">
+                                <span class="d-block text-xs">Diminum</span>
+                                <strong class="h4 text-success" id="stat-diminum">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded bg-danger-subtle text-danger-emphasis">
+                                <span class="d-block text-xs">Skip</span>
+                                <strong class="h4 text-danger" id="stat-terlewat">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pills-today-tab" data-bs-toggle="pill" data-bs-target="#pills-today" type="button" role="tab">
+                <i class="bi bi-calendar-day"></i> Monitor Hari Ini (Siklus Aktif)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pills-all-tab" data-bs-toggle="pill" data-bs-target="#pills-all" type="button" role="tab">
+                <i class="bi bi-calendar-range"></i> Master Tabel 10 Hari
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pills-vitals-tab" data-bs-toggle="pill" data-bs-target="#pills-vitals" type="button" role="tab" onclick="renderVitalsList()">
+                <i class="bi bi-heart-pulse-fill text-danger"></i> Pemantauan TTV Mandiri
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+        
+        <div class="tab-pane fade show active" id="pills-today" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-clipboard2-pulse"></i> Daftar Obat Siklus Aktif</h5>
+                    <span id="today-date-badge" class="badge bg-white text-primary px-3 py-2 fs-7"></span>
+                </div>
+                <div class="card-body bg-light">
+                    <div class="row g-3" id="today-cards-container">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="pills-all" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-table"></i> Jadwal &amp; Status Seluruh Siklus (10 Hari)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-responsive-custom">
+                        <table class="table table-bordered mb-0 text-center align-middle" id="master-table">
+                            <thead class="table-secondary sticky-top" id="master-table-head">
+                                </thead>
+                            <tbody id="master-table-body">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="pills-vitals" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-danger text-white py-3">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-file-earmark-medical-fill"></i> Log Pemeriksaan TTV Baru</h6>
+                        </div>
+                        <div class="card-body bg-light">
+                            <form id="vitals-form" onsubmit="saveVitalsEntry(event)">
+                                <input type="hidden" id="vitals-edit-id" value="">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-xs fw-bold text-uppercase text-secondary">Tekanan Darah (Tensi) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="vital-sys" class="form-control text-center" placeholder="Sistolik (cth: 120)" required min="50" max="250">
+                                        <span class="input-group-text">/</span>
+                                        <input type="number" id="vital-dia" class="form-control text-center" placeholder="Diastolik (cth: 80)" required min="30" max="150">
+                                        <span class="input-group-text">mmHg</span>
+                                    </div>
+                                    <div class="form-text text-xs text-muted">Batas normal klinis: kurang dari 120/80 mmHg.</div>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label text-xs fw-bold text-uppercase text-secondary">Denyut Nadi <span class="text-danger">*</span></label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" id="vital-pulse" class="form-control" placeholder="cth: 75" required min="30" max="220">
+                                            <span class="input-group-text">bpm</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label text-xs fw-bold text-uppercase text-secondary">Laju Nafas <span class="text-danger">*</span></label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" id="vital-resp" class="form-control" placeholder="cth: 16" required min="8" max="60">
+                                            <span class="input-group-text">x/mnt</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label text-xs fw-bold text-uppercase text-secondary">Saturasi Oksigen (SpO2) <span class="text-danger">*</span></label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" id="vital-spo2" class="form-control" placeholder="cth: 98" required min="50" max="100">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label text-xs fw-bold text-uppercase text-secondary">Suhu Tubuh</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" id="vital-temp" class="form-control" placeholder="cth: 36.5" step="0.1" min="30" max="45">
+                                            <span class="input-group-text">°C</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label text-xs fw-bold text-uppercase text-secondary">Catatan Kondisi / Keluhan Lain</label>
+                                    <textarea id="vital-notes" class="form-control form-control-sm" rows="2" placeholder="cth: Kepala agak pusing berputar, diukur setelah istirahat 10 menit."></textarea>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="vitals-cancel-btn" class="btn btn-sm btn-outline-secondary w-50 fw-semibold d-none" onclick="cancelVitalsEdit()">Batal</button>
+                                    <button type="submit" id="vitals-submit-btn" class="btn btn-sm btn-danger w-100 fw-bold"><i class="bi bi-heart-pulse"></i> Simpan Catatan TTV</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-8 col-lg-7 col-md-12">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-dark text-white py-3">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history"></i> Riwayat Perkembangan Klinis (Kronologis Situasional)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                                <table class="table table-hover table-bordered align-middle text-center mb-0 text-sm">
+                                    <thead class="table-secondary sticky-top">
+                                        <tr>
+                                            <th style="font-size: 0.8rem; width: 170px;">Waktu Pemeriksaan</th>
+                                            <th style="font-size: 0.8rem;">Tensi</th>
+                                            <th style="font-size: 0.8rem;">Nadi</th>
+                                            <th style="font-size: 0.8rem;">Nafas</th>
+                                            <th style="font-size: 0.8rem;">SpO2</th>
+                                            <th style="font-size: 0.8rem;">Suhu</th>
+                                            <th style="font-size: 0.8rem;" class="text-start">Catatan Klinis</th>
+                                            <th style="font-size: 0.8rem; width: 90px;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="vitals-table-body">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="infoModalLabel"><i class="bi bi-info-circle-fill"></i> Pusat Informasi &amp; Panduan Aplikasi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-dark p-0">
+                <ul class="nav nav-tabs bg-light px-3 pt-2" id="infoTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-2 text-sm fw-bold" id="rules-tab" data-bs-toggle="tab" data-bs-target="#rules-content" type="button" role="tab"><i class="bi bi-shield-check"></i> Logika &amp; Siklus</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2 text-sm fw-bold" id="dev-tab" data-bs-toggle="tab" data-bs-target="#dev-content" type="button" role="tab"><i class="bi bi-code-square"></i> Developer</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-2 text-sm fw-bold" id="changelog-tab" data-bs-toggle="tab" data-bs-target="#changelog-content" type="button" role="tab"><i class="bi bi-journal-text"></i> Changelog (Riwayat Revisi)</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content p-4" id="infoTabContent">
+                    <div class="tab-pane fade show active" id="rules-content" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-6 border-end">
+                                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-calendar-check-fill"></i> Konsep Siklus Medis 24 Jam</h6>
+                                <p class="text-sm text-muted lh-base">
+                                    Satu <strong>Hari Pengobatan</strong> dihitung mulai jam <strong>06.35 pagi</strong> sampai dini hari pukul <strong>00.35 (keesokan harinya secara kalender)</strong>.
+                                    <br><br>
+                                    <em>Contoh: Hari ke-1 dimulai tanggal 23 Mei jam 06.35 pagi, maka dosis dini hari pukul 00.35 secara kalender jatuh pada tanggal 24 Mei dini hari, namun tetap tercatat sebagai dosis Hari ke-1. Hari ke-2 baru akan dimulai pada 24 Mei jam 06.35 pagi.</em>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-danger mb-3"><i class="bi bi-shield-fill-exclamation"></i> Logika Keamanan &amp; Jarak Aman Medis</h6>
+                                <ul class="text-sm text-muted ps-3 lh-base">
+                                    <li class="mb-2"><strong>Standar Frekuensi &amp; Jeda Aman:</strong>
+                                        <br>• 1x1: Jeda 24 jam (misal 20.00 malam)
+                                        <br>• 2x1: Jeda 12 jam (pagi &amp; malam)
+                                        <br>• 3x1: Jeda 8 jam (pagi, siang &amp; malam)
+                                        <br>• 4x1: Jeda 6 jam (pagi, siang, sore, malam/dini hari)
+                                    </li>
+                                    <li class="mb-2"><strong>Batas Toleransi Jatuh Tempo:</strong>
+                                        <br>• <strong>Semua Obat</strong>: Batas toleransi ketat adalah <strong>30 menit</strong> setelah jam target dimulai. Lewat dari itu, status langsung menjadi <span class="badge bg-danger">SKIP</span>.
+                                    </li>
+                                    <li><strong>Sistem Proteksi Keamanan TTV:</strong>
+                                        <br>Demi kepatuhan rekam medis asli klinis, perubahan entri TTV dibatasi maksimal <strong>1x Edit</strong> per rekaman. Sekali disimpan, fungsi edit selamanya dikunci untuk mencegah manipulasi data historis.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="dev-content" role="tabpanel">
+                        <div class="text-center py-2">
+                            <div class="mb-3">
+                                <i class="bi bi-terminal-box text-primary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="fw-bold text-dark mb-1">mlev@2026</h4>
+                            <p class="text-muted text-sm mb-3"><i class="bi bi-envelope-at-fill text-secondary"></i> mlevian@protonmail.com</p>
+                            
+                            <div class="card border-0 bg-light p-3 mx-auto" style="max-width: 600px;">
+                                <figure class="mb-0">
+                                    <blockquote class="blockquote blockquote-custom bg-white px-3 py-2 rounded shadow-sm text-sm italic">
+                                        <p class="mb-0 text-secondary-emphasis">"Kepatuhan dalam pengobatan bukan hanya tentang mematuhi resep, melainkan komitmen harian yang menjaga harapan hidup dan kebersamaan keluarga kita tetap utuh."</p>
+                                    </blockquote>
+                                    <figcaption class="blockquote-footer mt-2 mb-0 text-xs text-muted">
+                                        Pesan hangat dari Pengembang Aplikasi
+                                    </figcaption>
+                                </figure>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="changelog-content" role="tabpanel">
+                        <div style="max-height: 350px; overflow-y: auto;" class="pe-2">
+                            <div class="timeline text-sm text-muted">
+                                <div class="mb-3 pb-2 border-bottom">
+                                    <span class="badge bg-danger">v4.2.0</span> <strong class="text-dark">Revisi Integrasi Monitor TTV (Terbaru)</strong>
+                                    <ul class="mb-0 ps-3 mt-1 text-xs text-muted lh-sm">
+                                        <li>Penambahan Tab Pemeriksaan Tanda-Tanda Vital (TTV) Mandiri situasional.</li>
+                                        <li>Implementasi batasan ketat riwayat klinis: **Maksimal 1x Edit** per rekaman data TTV.</li>
+                                        <li>Sistem otomatisasi penandaan visual abnormalitas (Tensi, Nadi, Laju Nafas, SpO2) sesuai standar medis.</li>
+                                        <li>Penyimpanan independen terenkapsulasi `vitals_db_spacing` di LocalStorage.</li>
+                                    </ul>
+                                </div>
+                                <div class="mb-3 pb-2 border-bottom">
+                                    <span class="badge bg-primary">v4.1.0</span> <span class="text-muted">Revisi Info Developer &amp; Transisi Malam</span>
+                                    <ul class="mb-0 ps-3 mt-1 text-xs text-muted lh-sm">
+                                        <li>Integrasi perlindungan modal keselamatan medis untuk pembatalan (*untoggle*) pasca masa toleransi.</li>
+                                        <li>Penyelarasan otomatis hari aktif ke siklus esok hari pasca melewati pukul 02:00 pagi.</li>
+                                        <li>Penambahan Tab Profil Developer mlev@2026 dan e-mail korespondensi resmi.</li>
+                                    </ul>
+                                </div>
+                                <div class="mb-3 pb-2 border-bottom">
+                                    <span class="badge bg-secondary">v4.0.0</span> <span class="text-muted">Revisi Batas Kedaluwarsa Ketat</span>
+                                    <ul class="mb-0 ps-3 mt-1 text-xs text-muted lh-sm">
+                                        <li>Pembaruan parameter masa aktif seluruh obat menjadi tepat 30 menit dari jam target tanpa pengecualian.</li>
+                                    </ul>
+                                </div>
+                                <div class="mb-3 pb-2 border-bottom">
+                                    <span class="badge bg-secondary">v3.0.0</span> <span class="text-muted">Revisi Lencana Premium</span>
+                                    <ul class="mb-0 ps-3 mt-1 text-xs text-muted lh-sm">
+                                        <li>Penggantian tombol switch konvensional dengan lencana statis terverifikasi centang biru (*Verified Blue Badge*).</li>
+                                    </ul>
+                                </div>
+                                <div class="mb-0">
+                                    <span class="badge bg-secondary">v1.0.0</span> <span class="text-muted">Rilis Awal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Paham &amp; Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="manageMedicinesModal" tabindex="-1" aria-labelledby="manageMedicinesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="manageMedicinesModalLabel"><i class="bi bi-sliders2 text-warning"></i> Atur &amp; Sesuaikan Resep Obat (CRUD)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="card border-0 bg-light p-3 mb-4">
+                    <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-plus-circle-fill text-primary"></i> Tambah / Daftarkan Obat Baru</h6>
+                    <form id="add-medicine-form" onsubmit="saveNewMedicine(event)">
+                        <div class="row g-3">
+                            <div class="col-md-4 col-sm-12">
+                                <label class="form-label text-xs fw-bold text-uppercase">Nama &amp; Dosis Obat</label>
+                                <input type="text" id="med-name" class="form-control form-control-sm" placeholder="Contoh: Paracetamol 500 mg" required>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label text-xs fw-bold text-uppercase">Aturan Minum (Dosis)</label>
+                                <select id="med-frequency" class="form-select form-select-sm" required>
+                                    <option value="1x1">1x1 (Sehari Sekali - Jeda 24 Jam)</option>
+                                    <option value="2x1" selected>2x1 (Dua Kali Sehari - Jeda 12 Jam)</option>
+                                    <option value="3x1">3x1 (Tiga Kali Sehari - Jeda 8 Jam)</option>
+                                    <option value="4x1">4x1 (Empat Kali Sehari - Jeda 6 Jam)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label text-xs fw-bold text-uppercase">Jam Minum Pertama</label>
+                                <input type="time" id="med-start-time" class="form-control form-control-sm" value="06:35" required>
+                            </div>
+                            <div class="col-md-2 col-sm-12 d-flex align-items-end">
+                                <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold"><i class="bi bi-check-lg"></i> Simpan</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div>
+                    <h6 class="fw-bold mb-2 text-secondary"><i class="bi bi-file-earmark-medical"></i> Daftar Resep Obat Aktif (Auto-Spacing)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered align-middle text-center text-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nama Obat</th>
+                                    <th>Aturan</th>
+                                    <th>Jam Mulai</th>
+                                    <th>Jam Terdistribusi (Sistem)</th>
+                                    <th style="width: 100px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crud-med-list-body">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="resetMedicinesToDefault()"><i class="bi bi-arrow-counterclockwise"></i> Pulihkan ke Default Dokter</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Selesai &amp; Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="safetyConfirmModal" tabindex="-1" aria-labelledby="safetyConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold" id="safetyConfirmModalLabel"><i class="bi bi-shield-fill-exclamation"></i> Peringatan Keselamatan Medis</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-dark">
+                <p class="text-sm mb-0">
+                    <strong>⚠️ Perhatian:</strong>
+                    <br><br>
+                    Waktu pemberian jadwal obat ini (batas toleransi 30 menit) sudah lewat. Jika Anda membatalkan status terverifikasi ini, jadwal akan <strong>otomatis terkunci sebagai TERLEWAT (SKIP)</strong> dan tidak bisa diubah kembali demi menghindari kesalahan dosis.
+                    <br><br>
+                    Apakah Anda yakin ingin tetap membatalkannya?
+                </p>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal (Tetap Simpan)</button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold" id="confirm-safety-btn">Ya, Batalkan &amp; Kunci</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="statusToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+                <span id="toast-message">Pemberitahuan keamanan obat.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function playBeep(freq = 880, duration = 0.2) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        } catch (e) {
+            console.log("Audio play blocked by browser security policy.");
+        }
+    }
+</script>
+
+<script>
+    // Resep standar awal dokter
+    const DEFAULT_MEDS_DB = [
+        { id: "1", name: "Piracetam 1200 mg", frequency: "2x1", startHour: "06:35" },
+        { id: "2", name: "Paracetamol 500 mg", frequency: "4x1", startHour: "06:35" },
+        { id: "3", name: "Spironolakton 25 mg", frequency: "2x1", startHour: "06:35" },
+        { id: "4", name: "Amlodipin 10 mg", frequency: "1x1", startHour: "20:00" },
+        { id: "5", name: "Azitromisin 500 mg", frequency: "1x1", startHour: "21:00" }
+    ];
+
+    let MEDICINES_DB = [];
+    let startDate = null;
+    let takenDatabase = {}; 
+    let vitalsDatabase = []; // Database TTV Baru
+
+    let pendingUntoggleDay = null;
+    let pendingUntoggleSlot = null;
+
+    window.onload = function() {
+        initDates();
+        loadMedicinesConfig();
+        loadDatabase();
+        loadVitalsDatabase();
+        updateSystemTime();
+        
+        document.getElementById('confirm-safety-btn').onclick = function() {
+            if (pendingUntoggleDay !== null && pendingUntoggleSlot !== null) {
+                const key = `${pendingUntoggleDay}-${pendingUntoggleSlot}`;
+                delete takenDatabase[key];
+                saveDatabase();
+                showWarningToast("Verifikasi obat dibatalkan & jadwal otomatis dikunci (SKIP).");
+                
+                const modalEl = document.getElementById('safetyConfirmModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                
+                pendingUntoggleDay = null;
+                pendingUntoggleSlot = null;
+            }
+        };
+
+        setInterval(updateSystemTime, 1000);
+    }
+
+    function initDates() {
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        const storedStart = localStorage.getItem('med_start_date_spacing');
+        const defaultDate = storedStart ? storedStart : dateStr;
+        
+        document.getElementById('start-date-picker').value = defaultDate;
+        startDate = new Date(defaultDate + "T00:00:00");
+        
+        document.getElementById('start-date-picker').addEventListener('change', function(e) {
+            localStorage.setItem('med_start_date_spacing', e.target.value);
+            startDate = new Date(e.target.value + "T00:00:00");
+            renderUI();
+        });
+    }
+
+    function loadMedicinesConfig() {
+        const stored = localStorage.getItem('med_definitions_spacing_v4');
+        if (stored) {
+            MEDICINES_DB = JSON.parse(stored);
+        } else {
+            MEDICINES_DB = JSON.parse(JSON.stringify(DEFAULT_MEDS_DB));
+            localStorage.setItem('med_definitions_spacing_v4', JSON.stringify(MEDICINES_DB));
+        }
+    }
+
+    function saveMedicinesConfig() {
+        localStorage.setItem('med_definitions_spacing_v4', JSON.stringify(MEDICINES_DB));
+        renderUI();
+    }
+
+    function loadDatabase() {
+        const data = localStorage.getItem('med_taken_db_spacing');
+        if (data) {
+            takenDatabase = JSON.parse(data);
+        } else {
+            takenDatabase = { "0-06:35": "06:35 WIB", "0-12:35": "12:35 WIB" };
+            localStorage.setItem('med_taken_db_spacing', JSON.stringify(takenDatabase));
+        }
+    }
+
+    function saveDatabase() {
+        localStorage.setItem('med_taken_db_spacing', JSON.stringify(takenDatabase));
+        renderUI();
+    }
+
+    function loadVitalsDatabase() {
+        const data = localStorage.getItem('vitals_db_spacing');
+        if (data) {
+            vitalsDatabase = JSON.parse(data);
+        } else {
+            vitalsDatabase = [];
+        }
+    }
+
+    function saveVitalsDatabase() {
+        localStorage.setItem('vitals_db_spacing', JSON.stringify(vitalsDatabase));
+        renderVitalsList();
+    }
+
+    function getCurrentTime() {
+        return new Date();
+    }
+
+    function updateSystemTime() {
+        const now = getCurrentTime();
+        const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
+        document.getElementById('live-clock').innerText = now.toLocaleTimeString('id-ID', timeOptions) + " WIB";
+
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' };
+        document.getElementById('live-date').innerText = now.toLocaleDateString('id-ID', dateOptions);
+
+        renderUI();
+    }
+
+    function showWarningToast(message, isSuccess = false) {
+        const toastEl = document.getElementById('statusToast');
+        document.getElementById('toast-message').innerText = message;
+        toastEl.className = `toast align-items-center text-white ${isSuccess ? 'bg-success' : 'bg-danger'} border-0`;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    function addHours(timeStr, hoursToAdd) {
+        const [h, m] = timeStr.split(':').map(Number);
+        let totalMins = h * 60 + m + (hoursToAdd * 60);
+        totalMins = totalMins % (24 * 60);
+        const newH = Math.floor(totalMins / 60);
+        const newM = totalMins % 60;
+        return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
+
+    function getRelativeMinutes(timeStr) {
+        const [h, m] = timeStr.split(':').map(Number);
+        let min = h * 60 + m;
+        let startMin = 6 * 60 + 35; 
+        let diff = min - startMin;
+        if (diff < 0) diff += 24 * 60;
+        return diff;
+    }
+
+    function getSlotDateTime(baseCalDate, slotStr) {
+        const [shour, smin] = slotStr.split(':').map(Number);
+        let target = new Date(baseCalDate.getTime());
+        target.setHours(shour, smin, 0, 0);
+
+        const slotMinutes = shour * 60 + smin;
+        const startMinutes = 6 * 60 + 35; 
+        if (slotMinutes < startMinutes) {
+            target.setDate(target.getDate() + 1);
+        }
+        return target;
+    }
+
+    function evaluateSchedule(now) {
+        let stats = { belum: 0, aktif: 0, diminum: 0, terlewat: 0 };
+        const uniqueSlotsSet = new Set();
+        
+        MEDICINES_DB.forEach(med => {
+            uniqueSlotsSet.add(med.startHour);
+            if (med.frequency === '2x1') uniqueSlotsSet.add(addHours(med.startHour, 12));
+            else if (med.frequency === '3x1') {
+                uniqueSlotsSet.add(addHours(med.startHour, 8));
+                uniqueSlotsSet.add(addHours(med.startHour, 16));
+            } else if (med.frequency === '4x1') {
+                uniqueSlotsSet.add(addHours(med.startHour, 6));
+                uniqueSlotsSet.add(addHours(med.startHour, 12));
+                uniqueSlotsSet.add(addHours(med.startHour, 18));
+            }
+        });
+
+        const sortedSlots = Array.from(uniqueSlotsSet).sort((a, b) => getRelativeMinutes(a) - getRelativeMinutes(b));
+        const flatEvents = [];
+
+        for (let d = 0; d < 10; d++) {
+            const baseCalDate = new Date(startDate.getTime());
+            baseCalDate.setDate(startDate.getDate() + d);
+
+            sortedSlots.forEach(slot => {
+                const targetDate = getSlotDateTime(baseCalDate, slot);
+                const medicinesInThisSlot = MEDICINES_DB.filter(med => {
+                    const activeHours = [med.startHour];
+                    if (med.frequency === '2x1') activeHours.push(addHours(med.startHour, 12));
+                    else if (med.frequency === '3x1') {
+                        activeHours.push(addHours(med.startHour, 8));
+                        activeHours.push(addHours(med.startHour, 16));
+                    } else if (med.frequency === '4x1') {
+                        activeHours.push(addHours(med.startHour, 6));
+                        activeHours.push(addHours(med.startHour, 12));
+                        activeHours.push(addHours(med.startHour, 18));
+                    }
+                    return activeHours.includes(slot);
+                }).map(med => med.name);
+
+                const takenTimeVal = takenDatabase[`${d}-${slot}`];
+                const isTaken = takenTimeVal !== undefined && takenTimeVal !== null;
+
+                flatEvents.push({
+                    dayIndex: d,
+                    slot,
+                    targetDate,
+                    medicines: medicinesInThisSlot,
+                    isTaken: isTaken,
+                    takenTime: typeof takenTimeVal === 'string' ? takenTimeVal : (isTaken ? `${slot} WIB` : null)
+                });
+            });
+        }
+
+        flatEvents.sort((a, b) => a.targetDate - b.targetDate);
+
+        flatEvents.forEach((event) => {
+            const skipDate = new Date(event.targetDate.getTime() + 30 * 60 * 1000); 
+            event.skipDate = skipDate;
+
+            if (event.isTaken) event.status = 'DIMINUM';
+            else {
+                if (now >= event.skipDate) event.status = 'TERLEWAT';
+                else if (now >= event.targetDate && now < event.skipDate) event.status = 'AKTIF';
+                else event.status = 'BELUM_WAKTUNYA';
+            }
+
+            if (event.status === 'BELUM_WAKTUNYA') stats.belum++;
+            if (event.status === 'AKTIF') stats.aktif++;
+            if (event.status === 'DIMINUM') stats.diminum++;
+            if (event.status === 'TERLEWAT') stats.terlewat++;
+        });
+
+        const schedules = [];
+        for (let d = 0; d < 10; d++) {
+            const baseCalDate = new Date(startDate.getTime());
+            baseCalDate.setDate(startDate.getDate() + d);
+            schedules.push({
+                dayIndex: d,
+                displayDayName: `Hari ${d + 1}`,
+                baseDateLabel: baseCalDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+                slots: flatEvents.filter(ev => ev.dayIndex === d)
+            });
+        }
+
+        let medicalDate = new Date(now.getTime());
+        if (now.getHours() < 2) medicalDate.setDate(medicalDate.getDate() - 1);
+        medicalDate.setHours(0, 0, 0, 0);
+
+        const startZero = new Date(startDate.getTime());
+        startZero.setHours(0, 0, 0, 0);
+        const activeDayIndex = Math.floor((medicalDate.getTime() - startZero.getTime()) / (1000 * 60 * 60 * 24));
+
+        return { stats, activeDayIndex, schedules, sortedSlots };
+    }
+
+    let lastActiveStateStr = "";
+
+    function renderUI() {
+        const now = getCurrentTime();
+        const data = evaluateSchedule(now);
+
+        document.getElementById('stat-belum').innerText = data.stats.belum;
+        document.getElementById('stat-aktif').innerText = data.stats.aktif;
+        document.getElementById('stat-diminum').innerText = data.stats.diminum;
+        document.getElementById('stat-terlewat').innerText = data.stats.terlewat;
+
+        const activeDayStatusLabel = document.getElementById('active-day-status');
+        if (data.activeDayIndex !== -1 && data.activeDayIndex < 10) {
+            activeDayStatusLabel.innerHTML = `<span class="badge bg-success px-2.5 py-1">Siklus Hari Ke-${data.activeDayIndex + 1}</span>`;
+        } else {
+            if (now < new Date(startDate.getTime()).setHours(6, 35, 0, 0)) {
+                activeDayStatusLabel.innerHTML = `<span class="badge bg-secondary px-2.5 py-1">Belum Memulai Hari 1</span>`;
+            } else {
+                activeDayStatusLabel.innerHTML = `<span class="badge bg-danger px-2.5 py-1">Selesai 10 Hari</span>`;
+            }
+        }
+
+        const activeStateStr = JSON.stringify(data.schedules.map(d => d.slots.map(s => s.status)));
+        if (lastActiveStateStr !== "" && lastActiveStateStr !== activeStateStr) {
+            const oldStates = JSON.parse(lastActiveStateStr);
+            const currentStates = JSON.parse(activeStateStr);
+            let playAlarm = false;
+            for (let i = 0; i < currentStates.length; i++) {
+                for (let j = 0; j < currentStates[i].length; j++) {
+                    if (currentStates[i][j] === 'AKTIF' && oldStates[i]?.[j] !== 'AKTIF') playAlarm = true;
+                }
+            }
+            if (playAlarm) {
+                playBeep(987.77, 0.4); 
+                setTimeout(() => playBeep(1318.51, 0.4), 150);
+            }
+        }
+        lastActiveStateStr = activeStateStr;
+
+        const todayCardsContainer = document.getElementById('today-cards-container');
+        const todayDateBadge = document.getElementById('today-date-badge');
+        todayCardsContainer.innerHTML = '';
+
+        const targetDayIndex = (data.activeDayIndex >= 0 && data.activeDayIndex < 10) ? data.activeDayIndex : 0; 
+        const activeDayData = data.schedules[targetDayIndex];
+
+        if (activeDayData && data.activeDayIndex >= 0 && data.activeDayIndex < 10) {
+            todayDateBadge.innerText = `SIKLUS AKTIF: HARI KE-${targetDayIndex + 1}`;
+            
+            activeDayData.slots.forEach(slotItem => {
+                const card = document.createElement('div');
+                card.className = 'col-lg-4 col-md-6 col-sm-12';
+                
+                let badgeHTML = '', statusClass = '', statusDesc = '', interactionAreaHTML = '';
+                const tglString = slotItem.targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                const dateHeaderLabel = `<div class="text-xs text-muted fw-semibold mb-1"><i class="bi bi-calendar-event"></i> Kalender: ${tglString}</div>`;
+
+                if (slotItem.status === 'BELUM_WAKTUNYA') {
+                    badgeHTML = '<span class="badge bg-secondary">Belum Waktunya</span>';
+                    statusClass = 'status-belum cursor-not-allowed';
+                    statusDesc = `Dijadwalkan minum obat tanggal ${tglString} jam ${slotItem.slot}`;
+                    interactionAreaHTML = `<div class="d-flex align-items-center justify-content-center py-2 bg-light text-muted rounded-pill text-xs fw-bold"><i class="bi bi-lock-fill text-secondary me-1"></i> Terkunci (Belum Waktu)</div>`;
+                } else if (slotItem.status === 'AKTIF') {
+                    badgeHTML = '<span class="badge bg-warning text-dark">AKTIF - Minum Sekarang!</span>';
+                    statusClass = 'status-aktif';
+                    const sisaMenit = Math.ceil((slotItem.skipDate - now) / 60000);
+                    statusDesc = `<strong class="text-danger">Sisa waktu minum: ${sisaMenit} menit sebelum auto-skip!</strong>`;
+                    interactionAreaHTML = `<button class="btn btn-sm btn-outline-warning w-100 py-2 rounded-pill fw-bold text-xs"><i class="bi bi-hand-index-thumb"></i> Ketuk untuk Konfirmasi Minum</button>`;
+                } else if (slotItem.status === 'DIMINUM') {
+                    badgeHTML = '<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Sudah Diminum</span>';
+                    statusClass = 'status-diminum';
+                    statusDesc = 'Bagus! Obat diminum sesuai jadwal.';
+                    const confirmTime = slotItem.takenTime ? slotItem.takenTime : `${slotItem.slot} WIB`;
+                    interactionAreaHTML = `
+                        <div class="mt-2 pt-2 border-top border-success-subtle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="verified-badge-container m-0"><i class="bi bi-patch-check-fill verified-blue-tick"></i> <span>TERVERIFIKASI</span></div>
+                                <div class="text-xs text-success fw-bold"><i class="bi bi-clock-history"></i> Dikonfirmasi: ${confirmTime}</div>
+                            </div>
+                        </div>`;
+                } else if (slotItem.status === 'TERLEWAT') {
+                    badgeHTML = '<span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i> Terlewat (Auto-Skip)</span>';
+                    statusClass = 'status-terlewat cursor-not-allowed';
+                    statusDesc = '<strong class="text-danger">Sesi terlewat &amp; dikunci. Jangan minum dosis ini!</strong>';
+                    interactionAreaHTML = `<div class="d-flex align-items-center justify-content-center py-2 bg-danger-subtle text-danger rounded-pill text-xs fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Terlewat (Auto-Skip)</div>`;
+                }
+
+                let medsList = slotItem.medicines.length > 0 ? slotItem.medicines.map(m => `<li><i class="bi bi-capsule-pill text-primary"></i> ${m}</li>`).join('') : `<li class="text-muted italic"><i class="bi bi-slash-circle text-secondary"></i> Tidak ada obat terjadwal</li>`;
+
+                card.innerHTML = `
+                    <div class="card h-100 med-card ${statusClass}" onclick="togglePill(${targetDayIndex}, '${slotItem.slot}')">
+                        <div class="card-body p-3 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-fill text-primary"></i> ${slotItem.slot}</h4>
+                                        ${dateHeaderLabel}
+                                    </div>
+                                    ${badgeHTML}
+                                </div>
+                                <ul class="list-unstyled text-sm fw-semibold ps-1 my-3 text-dark">${medsList}</ul>
+                            </div>
+                            <div class="border-top pt-2 mt-2">
+                                <small class="text-xs d-block text-muted mb-2">${statusDesc}</small>
+                                ${interactionAreaHTML}
+                            </div>
+                        </div>
+                    </div>`;
+                todayCardsContainer.appendChild(card);
+            });
+        } else {
+            todayDateBadge.innerText = 'BELUM / SELESAI SIKLUS';
+            todayCardsContainer.innerHTML = `<div class="col-12 text-center py-5"><i class="bi bi-calendar2-x-fill text-muted" style="font-size: 3rem;"></i><p class="mt-2 mb-0 fw-semibold text-secondary">Tidak ada siklus pengobatan yang sedang berjalan.</p></div>`;
+        }
+
+        // Render Tab 2: Tabel Master
+        const tableHead = document.getElementById('master-table-head');
+        const tableBody = document.getElementById('master-table-body');
+        
+        let headHTML = `<tr><th style="min-width: 110px;">Siklus Hari</th>`;
+        data.sortedSlots.forEach(slot => {
+            let label = 'Pagi'; const hr = parseInt(slot.split(':')[0]);
+            if (hr >= 11 && hr < 15) label = 'Siang';
+            else if (hr >= 15 && hr < 19) label = 'Sore';
+            else if (hr >= 19 && hr < 24) label = 'Malam';
+            else if (hr >= 0 && hr < 6) label = 'Dini Hari';
+            headHTML += `<th>${slot}<br><span class="text-xs text-muted fw-normal">${label}</span></th>`;
+        });
+        headHTML += `</tr>`;
+        tableHead.innerHTML = headHTML;
+
+        tableBody.innerHTML = '';
+        data.schedules.forEach(day => {
+            const row = document.createElement('tr');
+            if (day.dayIndex === data.activeDayIndex) row.className = 'table-primary border-primary border-2 fw-bold';
+
+            let cellsHTML = `<td class="align-middle bg-white fw-bold border-end"><span class="d-block text-primary">${day.displayDayName}</span><span class="text-xs text-muted fw-normal">${day.baseDateLabel}</span></td>`;
+
+            day.slots.forEach(slotItem => {
+                let cellClass = '', statusBadge = '', icon = '';
+                if (slotItem.status === 'BELUM_WAKTUNYA') {
+                    cellClass = 'bg-white text-muted cursor-not-allowed';
+                    statusBadge = '<span class="badge bg-secondary-subtle text-secondary-emphasis">Belum</span>';
+                    icon = '<i class="bi bi-lock-fill text-xs text-secondary"></i>';
+                } else if (slotItem.status === 'AKTIF') {
+                    cellClass = 'bg-warning-subtle text-warning-emphasis';
+                    statusBadge = '<span class="badge bg-warning text-dark animate-pulse">AKTIF</span>';
+                    icon = '<i class="bi bi-exclamation-circle-fill"></i>';
+                } else if (slotItem.status === 'DIMINUM') {
+                    cellClass = 'bg-success-subtle text-success-emphasis';
+                    statusBadge = '<span class="badge bg-primary rounded-pill px-2.5 py-1 text-xs"><i class="bi bi-patch-check-fill text-white"></i> YA</span>';
+                } else if (slotItem.status === 'TERLEWAT') {
+                    cellClass = 'bg-danger-subtle text-danger-emphasis cursor-not-allowed';
+                    statusBadge = '<span class="badge bg-danger text-white">SKIP</span>';
+                    icon = '<i class="bi bi-x-circle-fill text-danger"></i>';
+                }
+
+                const formattedCellDate = slotItem.targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                const displayMeds = slotItem.medicines.length > 0 ? slotItem.medicines.join(', ') : 'Tidak ada obat';
+
+                cellsHTML += `
+                    <td class="${cellClass}" style="min-height: 80px;" onclick="togglePill(${day.dayIndex}, '${slotItem.slot}')">
+                        <div class="py-1">
+                            <span class="d-block text-xs text-muted mb-1">${formattedCellDate}</span>
+                            <div class="fw-bold fs-7 mb-1">${icon} ${statusBadge}</div>
+                            <small class="text-xs text-dark d-block text-truncate mx-auto" style="max-width: 140px;" title="${displayMeds}">${displayMeds}</small>
+                        </div>
+                    </td>`;
+            });
+            row.innerHTML = cellsHTML;
+            tableBody.appendChild(row);
+        });
+    }
+
+    function togglePill(dayIndex, slot) {
+        const now = getCurrentTime();
+        const data = evaluateSchedule(now);
+        const dayData = data.schedules[dayIndex];
+        if (!dayData) return;
+
+        const slotData = dayData.slots.find(s => s.slot === slot);
+        if (!slotData) return;
+
+        const key = `${dayIndex}-${slot}`;
+        const isCurrentlyTaken = takenDatabase[key] !== undefined && takenDatabase[key] !== null;
+
+        if (isCurrentlyTaken) {
+            if (now >= slotData.skipDate) {
+                pendingUntoggleDay = dayIndex; pendingUntoggleSlot = slot;
+                new bootstrap.Modal(document.getElementById('safetyConfirmModal')).show();
+                playBeep(440, 0.25); return;
+            } else {
+                delete takenDatabase[key]; playBeep(440, 0.15); saveDatabase();
+                showWarningToast("Status verifikasi obat dibatalkan.", true);
+            }
+        } else {
+            if (slotData.status === 'TERLEWAT') { showWarningToast("Batas waktu terlewat! Pencatatan obat dikunci."); return; }
+            if (slotData.status === 'BELUM_WAKTUNYA') { showWarningToast("Belum memasuki jam pemberian obat!"); return; }
+
+            takenDatabase[key] = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
+            playBeep(1000, 0.15); saveDatabase();
+        }
+    }
+
+    /* =========================================================================
+       CRUD PEMBERIAN OBAT (SMART DOSING ENGINE)
+       ========================================================================= */
+    function openCRUDModal() { renderCRUDMedicineList(); }
+
+    function renderCRUDMedicineList() {
+        const tbody = document.getElementById('crud-med-list-body'); tbody.innerHTML = '';
+        if (MEDICINES_DB.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><p class="mb-0 text-sm">Belum ada obat terdaftar.</p></td></tr>`; return;
+        }
+        MEDICINES_DB.forEach((med) => {
+            const tr = document.createElement('tr');
+            const distribution = [med.startHour];
+            if (med.frequency === '2x1') distribution.push(addHours(med.startHour, 12));
+            else if (med.frequency === '3x1') { distribution.push(addHours(med.startHour, 8)); distribution.push(addHours(med.startHour, 16)); }
+            else if (med.frequency === '4x1') { distribution.push(addHours(med.startHour, 6)); distribution.push(addHours(med.startHour, 12)); distribution.push(addHours(med.startHour, 18)); }
+            const formatDist = distribution.map(time => `<span class="badge bg-secondary-subtle text-secondary-emphasis">${time}</span>`).join(' ');
+
+            tr.innerHTML = `
+                <td class="text-start fw-bold text-dark">${med.name}</td>
+                <td><span class="badge bg-primary">${med.frequency}</span></td>
+                <td><span class="badge bg-dark">${med.startHour}</span></td>
+                <td class="text-start">${formatDist}</td>
+                <td>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" onclick="editMedicine('${med.id}')"><i class="bi bi-pencil-square"></i></button>
+                        <button type="button" class="btn btn-xs btn-outline-danger py-1 px-2" onclick="deleteMedicine('${med.id}')"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function saveNewMedicine(e) {
+        e.preventDefault();
+        const nameInput = document.getElementById('med-name'), freqInput = document.getElementById('med-frequency'), startInput = document.getElementById('med-start-time');
+        MEDICINES_DB.push({ id: Date.now().toString(), name: nameInput.value.trim(), frequency: freqInput.value, startHour: startInput.value });
+        saveMedicinesConfig(); renderCRUDMedicineList();
+        nameInput.value = ''; freqInput.value = '2x1'; startInput.value = '06:35';
+        showWarningToast("Obat baru berhasil ditambahkan!", true); playBeep(1200, 0.1);
+    }
+
+    function editMedicine(id) {
+        const medIndex = MEDICINES_DB.findIndex(m => m.id === id); if (medIndex === -1) return;
+        const med = MEDICINES_DB[medIndex];
+        const newName = prompt("Ubah Nama & Dosis Obat:", med.name); if (newName === null) return;
+        if (!newName.trim()) { showWarningToast("Nama obat tidak boleh kosong!"); return; }
+        const newFreq = prompt("Ubah Aturan Dosis (1x1, 2x1, 3x1, 4x1):", med.frequency); if (newFreq === null) return;
+        const newStart = prompt("Ubah Jam Minum Pertama (HH:MM):", med.startHour); if (newStart === null) return;
+
+        MEDICINES_DB[medIndex] = { ...med, name: newName.trim(), frequency: newFreq.trim(), startHour: newStart.trim() };
+        saveMedicinesConfig(); renderCRUDMedicineList();
+        showWarningToast("Resep obat berhasil diperbarui!", true); playBeep(1100, 0.1);
+    }
+
+    function deleteMedicine(id) {
+        const med = MEDICINES_DB.find(m => m.id === id); if (!med) return;
+        if (confirm(`Apakah Anda yakin ingin menghapus "${med.name}"?`)) {
+            MEDICINES_DB = MEDICINES_DB.filter(m => m.id !== id); saveMedicinesConfig(); renderCRUDMedicineList();
+            showWarningToast("Obat berhasil dihapus.", true); playBeep(600, 0.15);
+        }
+    }
+
+    function resetMedicinesToDefault() {
+        if (confirm("Kembalikan resep obat ke setelan bawaan dokter?")) {
+            MEDICINES_DB = JSON.parse(JSON.stringify(DEFAULT_MEDS_DB)); saveMedicinesConfig(); renderCRUDMedicineList();
+            showWarningToast("Resep obat telah dipulihkan!", true); playBeep(880, 0.3);
+        }
+    }
+
+    /* =========================================================================
+       MODULE BARU: PEMANTAUAN TTV SITUASIONAL (Maksimal 1x Edit)
+       ========================================================================= */
+    function saveVitalsEntry(e) {
+        e.preventDefault();
+        const editId = document.getElementById('vitals-edit-id').value;
+        const sys = parseInt(document.getElementById('vital-sys').value);
+        const dia = parseInt(document.getElementById('vital-dia').value);
+        const pulse = parseInt(document.getElementById('vital-pulse').value);
+        const resp = parseInt(document.getElementById('vital-resp').value);
+        const spo2 = parseInt(document.getElementById('vital-spo2').value);
+        const temp = document.getElementById('vital-temp').value ? parseFloat(document.getElementById('vital-temp').value) : null;
+        const notes = document.getElementById('vital-notes').value.trim();
+
+        const now = getCurrentTime();
+        const timestampStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB - " + now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        if (editId) {
+            // Proses Aksi Update (Hanya diperbolehkan sekali)
+            const index = vitalsDatabase.findIndex(v => v.id === editId);
+            if (index !== -1) {
+                if (vitalsDatabase[index].editCount >= 1) {
+                    showWarningToast("Perubahan ditolak! Data rekam medis klinis ini sudah pernah diedit 1x.");
+                    cancelVitalsEdit();
+                    return;
+                }
+                vitalsDatabase[index] = {
+                    ...vitalsDatabase[index],
+                    sys, dia, pulse, resp, spo2, temp, notes,
+                    editCount: vitalsDatabase[index].editCount + 1,
+                    lastUpdated: timestampStr
+                };
+                showWarningToast("Data TTV berhasil diperbarui!", true);
+            }
+        } else {
+            // Proses Aksi Create Baru
+            vitalsDatabase.unshift({
+                id: Date.now().toString(),
+                timestamp: timestampStr,
+                sys, dia, pulse, resp, spo2, temp, notes,
+                editCount: 0,
+                lastUpdated: null
+            });
+            showWarningToast("Catatan TTV baru berhasil disimpan!", true);
+        }
+
+        saveVitalsDatabase();
+        document.getElementById('vitals-form').reset();
+        cancelVitalsEdit();
+        playBeep(1100, 0.15);
+    }
+
+    function renderVitalsList() {
+        const tbody = document.getElementById('vitals-table-body');
+        tbody.innerHTML = '';
+
+        if (vitalsDatabase.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-heart-pulse text-secondary fs-2 d-block mb-2"></i>Belum ada rekam data TTV. Isi formulir disamping untuk mencatat kondisi situasional Anda.</td></tr>`;
+            return;
+        }
+
+        vitalsDatabase.forEach(v => {
+            // Evaluasi Rentang Normal Medis
+            const bpClass = (v.sys >= 130 || v.dia >= 80) ? 'text-danger fw-bold' : ((v.sys >= 120 || v.dia >= 80) ? 'text-warning fw-bold' : 'text-success');
+            const pulseClass = (v.pulse < 60 || v.pulse > 100) ? 'text-danger fw-bold' : 'text-success';
+            const respClass = (v.resp < 12 || v.resp > 20) ? 'text-danger fw-bold' : 'text-success';
+            const spo2Class = (v.spo2 < 95) ? 'text-danger fw-bold' : 'text-success';
+            const tempClass = (v.temp && (v.temp < 36.0 || v.temp > 37.5)) ? 'text-danger fw-bold' : 'text-success';
+
+            // Kondisional Kunci Tombol Edit jika sudah melewati 1x perubahan
+            const isEditDisabled = v.editCount >= 1;
+            const editButtonHTML = isEditDisabled 
+                ? `<button class="btn btn-xs btn-light text-muted py-0 px-1 cursor-not-allowed" title="Kunci Medis: Sudah di-edit 1x" disabled><i class="bi bi-pencil-square"></i></button>`
+                : `<button class="btn btn-xs btn-outline-secondary py-0 px-1" onclick="startEditVitals('${v.id}')" title="Edit Catatan (Maks 1x)"><i class="bi bi-pencil-square"></i></button>`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-muted fw-medium text-xs">${v.timestamp}${v.editCount > 0 ? '<br><span class="text-warning text-xs font-monospace">[Edited]</span>' : ''}</td>
+                <td class="${bpClass}">${v.sys}/${v.dia} <small class="text-muted text-xs">mmHg</small></td>
+                <td class="${pulseClass}">${v.pulse} <small class="text-muted text-xs">bpm</small></td>
+                <td class="${respClass}">${v.resp} <small class="text-muted text-xs">x/m</small></td>
+                <td class="${spo2Class}">${v.spo2}%</td>
+                <td class="${tempClass}">${v.temp ? v.temp + ' °C' : '-'}</td>
+                <td class="text-start text-xs text-secondary-emphasis" style="max-width: 220px; white-space: normal; word-break: break-word;">${v.notes || '<span class="text-muted italic">- Tidak ada catatan -</span>'}</td>
+                <td>
+                    <div class="btn-group">
+                        ${editButtonHTML}
+                        <button class="btn btn-xs btn-outline-danger py-0 px-1" onclick="deleteVitalsEntry('${v.id}')" title="Hapus"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function startEditVitals(id) {
+        const entry = vitalsDatabase.find(v => v.id === id);
+        if (!entry) return;
+
+        if (entry.editCount >= 1) {
+            showWarningToast("Data rekam klinis ini sudah pernah diubah & dikunci demi keaslian data!");
+            return;
+        }
+
+        document.getElementById('vitals-edit-id').value = entry.id;
+        document.getElementById('vital-sys').value = entry.sys;
+        document.getElementById('vital-dia').value = entry.dia;
+        document.getElementById('vital-pulse').value = entry.pulse;
+        document.getElementById('vital-resp').value = entry.resp;
+        document.getElementById('vital-spo2').value = entry.spo2;
+        document.getElementById('vital-temp').value = entry.temp || '';
+        document.getElementById('vital-notes').value = entry.notes || '';
+
+        document.getElementById('vitals-submit-btn').className = "btn btn-sm btn-warning w-50 fw-bold text-dark";
+        document.getElementById('vitals-submit-btn').innerHTML = `<i class="bi bi-pencil-fill"></i> Update (1x Edit)`;
+        document.getElementById('vitals-cancel-btn').classList.remove('d-none');
+        
+        showWarningToast("Mode pengubahan data aktif. Ingat: Batas maksimal pengubahan hanya 1 kali!", false);
+        playBeep(800, 0.1);
+    }
+
+    function cancelVitalsEdit() {
+        document.getElementById('vitals-edit-id').value = '';
+        document.getElementById('vitals-form').reset();
+        document.getElementById('vitals-submit-btn').className = "btn btn-sm btn-danger w-100 fw-bold";
+        document.getElementById('vitals-submit-btn').innerHTML = `<i class="bi bi-heart-pulse"></i> Simpan Catatan TTV`;
+        document.getElementById('vitals-cancel-btn').classList.add('d-none');
+    }
+
+    function deleteVitalsEntry(id) {
+        if (confirm("Apakah Anda yakin ingin menghapus catatan pemeriksaan vital ini dari riwayat medis historis?")) {
+            vitalsDatabase = vitalsDatabase.filter(v => v.id !== id);
+            saveVitalsDatabase();
+            showWarningToast("Catatan vital klinis telah dihapus dari sistem.", true);
+            playBeep(500, 0.2);
+        }
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
