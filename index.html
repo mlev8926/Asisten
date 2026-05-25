@@ -457,6 +457,7 @@
                                         <li>Fitur checklist &amp; dropdown verifikasi obat individual sebelum status diminum disimpan.</li>
                                         <li>Penyelarasan rotasi siklus hari otomatis tepat pada pukul 00:00:01 WIB.</li>
                                         <li>Penanganan status obat slot 00:35 dini hari yang tetap masuk ke dalam siklus medis hari sebelumnya secara presisi.</li>
+                                        <li><strong>Fix:</strong> Melindungi kegagalan penanggalan kosong pada penambahan dan peralihan data antar-pasien baru.</li>
                                     </ul>
                                 </div>
                                 <div class="mb-3 pb-2 border-bottom">
@@ -688,7 +689,7 @@
     let MEDICINES_DB = [];
     let startDate = null;
     let takenDatabase = {};
-    let medicineStatusDatabase = {}; // NEW v5.1.0
+    let medicineStatusDatabase = {}; 
     let vitalsDatabase = [];
     
     // Safety Gates State
@@ -758,7 +759,7 @@
         active_patient_id = patientId;
         savePatientsRegistry();
         loadPatientData();
-        initDates();
+        initDates(); // Inisialisasi tanggal agar input picker diperbarui
         renderUI();
         updatePatientSelector();
     }
@@ -769,6 +770,7 @@
             takenDatabase = {};
             medicineStatusDatabase = {};
             vitalsDatabase = [];
+            startDate = null;
             return;
         }
         
@@ -818,7 +820,10 @@
         if (startDateStr) {
             startDate = new Date(startDateStr + "T00:00:00");
         } else {
-            startDate = null;
+            // FIX PREVENT CRASH: Jika belum ada tanggal, paksa default hari ini dan simpan
+            const todayStr = new Date().toISOString().split('T')[0];
+            savePatientData('startDate', todayStr);
+            startDate = new Date(todayStr + "T00:00:00");
         }
     }
 
@@ -929,6 +934,15 @@
     }
 
     // ============ MEDICINE MANAGEMENT ============
+
+    function addHours(timeStr, hoursToAdd) {
+        const [h, m] = timeStr.split(':').map(Number);
+        let totalMins = h * 60 + m + (hoursToAdd * 60);
+        totalMins = totalMins % (24 * 60);
+        const newH = Math.floor(totalMins / 60);
+        const newM = totalMins % 60;
+        return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
 
     function saveNewMedicine(event) {
         event.preventDefault();
@@ -1200,9 +1214,12 @@
         const sortedSlots = Array.from(uniqueSlotsSet).sort((a, b) => getRelativeMinutes(a) - getRelativeMinutes(b));
         const flatEvents = [];
 
+        // SAFETY GATE: Jaga agar startDate tidak bernilai null sebelum loop kalkulasi berjalan
+        const safeStartDate = startDate ? startDate : new Date();
+
         for (let d = 0; d < 10; d++) {
-            const baseCalDate = new Date(startDate.getTime());
-            baseCalDate.setDate(startDate.getDate() + d);
+            const baseCalDate = new Date(safeStartDate.getTime());
+            baseCalDate.setDate(safeStartDate.getDate() + d);
 
             sortedSlots.forEach(slot => {
                 const targetDate = getSlotDateTime(baseCalDate, slot);
@@ -1255,8 +1272,8 @@
 
         const schedules = [];
         for (let d = 0; d < 10; d++) {
-            const baseCalDate = new Date(startDate.getTime());
-            baseCalDate.setDate(startDate.getDate() + d);
+            const baseCalDate = new Date(safeStartDate.getTime());
+            baseCalDate.setDate(safeStartDate.getDate() + d);
             schedules.push({
                 dayIndex: d,
                 displayDayName: `Hari ${d + 1}`,
@@ -1269,7 +1286,7 @@
         let medicalDate = new Date(now.getTime());
         medicalDate.setHours(0, 0, 0, 0);
 
-        const startZero = new Date(startDate.getTime());
+        const startZero = new Date(safeStartDate.getTime());
         startZero.setHours(0, 0, 0, 0);
         const activeDayIndex = Math.floor((medicalDate.getTime() - startZero.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -1563,6 +1580,7 @@
     }
 
     function initDates() {
+        if (!active_patient_id) return;
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0];
         const storedStart = getPatientData('startDate');
@@ -1692,3 +1710,4 @@
 </script>
 </body>
 </html>
+
